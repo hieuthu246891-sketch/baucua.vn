@@ -22,7 +22,7 @@ cursor:pointer;
 input{
 padding:5px;
 margin:5px;
-width:80px;
+width:90px;
 }
 
 .grid{
@@ -60,7 +60,7 @@ border-collapse:collapse;
 
 td,th{
 border:1px solid white;
-padding:5px;
+padding:6px;
 }
 
 </style>
@@ -83,12 +83,13 @@ padding:5px;
 
 </div>
 
+
 <div id="game" style="display:none">
 
 <h3 id="uid"></h3>
 <h3 id="money"></h3>
 
-<button onclick="logout()">Logout</button>
+<button id="logout">Logout</button>
 
 <div class="grid">
 
@@ -105,7 +106,7 @@ padding:5px;
 
 <br>
 
-<button onclick="play()">QUAY</button>
+<button id="play">QUAY</button>
 
 <div>
 
@@ -122,7 +123,7 @@ padding:5px;
 <thead>
 <tr>
 <th>Email</th>
-<th>Tiền</th>
+<th>Tiền thắng</th>
 </tr>
 </thead>
 
@@ -131,6 +132,7 @@ padding:5px;
 </table>
 
 </div>
+
 
 <div id="admin" style="display:none">
 
@@ -141,10 +143,11 @@ padding:5px;
 
 <br>
 
-<button onclick="addMoney()">Nạp</button>
-<button onclick="removeMoney()">Rút</button>
+<button id="addMoney">Nạp tiền</button>
+<button id="removeMoney">Rút tiền</button>
 
 </div>
+
 
 
 <script type="module">
@@ -185,6 +188,7 @@ measurementId: "G-V7RM6KZXVW"
 
 };
 
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth();
 const db = getDatabase();
@@ -193,6 +197,11 @@ let currentUser;
 let money=0;
 
 const adminEmail="admin@casino.com";
+
+const icons=["🦐","🦀","🐟","🐓","🦌","🍐"];
+const names=["tom","cua","ca","ga","nai","bau"];
+
+
 
 document.getElementById("register").onclick=()=>{
 
@@ -203,22 +212,29 @@ createUserWithEmailAndPassword(auth,email,pass)
 .then(user=>{
 
 set(ref(db,"players/"+user.user.uid),{
+
 email:email,
 money:1000
+
 });
 
 });
 
 };
 
+
+
 document.getElementById("login").onclick=()=>{
 
-signInWithEmailAndPassword(auth,
+signInWithEmailAndPassword(
+auth,
 document.getElementById("email").value,
 document.getElementById("pass").value
 );
 
 };
+
+
 
 onAuthStateChanged(auth,user=>{
 
@@ -232,7 +248,9 @@ document.getElementById("game").style.display="block";
 document.getElementById("uid").innerText="UID: "+user.uid;
 
 if(user.email===adminEmail){
+
 document.getElementById("admin").style.display="block";
+
 }
 
 loadMoney();
@@ -242,11 +260,26 @@ loadHistory();
 
 });
 
+
+
 function loadMoney(){
 
 onValue(ref(db,"players/"+currentUser.uid),snap=>{
 
+if(!snap.exists()){
+
+set(ref(db,"players/"+currentUser.uid),{
+email:currentUser.email,
+money:1000
+});
+
+money=1000;
+
+}else{
+
 money=snap.val().money;
+
+}
 
 document.getElementById("money").innerText="Tiền: "+money;
 
@@ -254,8 +287,21 @@ document.getElementById("money").innerText="Tiền: "+money;
 
 }
 
-const icons=["🦐","🦀","🐟","🐓","🦌","🍐"];
-const names=["tom","cua","ca","ga","nai","bau"];
+
+
+document.getElementById("logout").onclick=()=>{
+
+signOut(auth);
+
+location.reload();
+
+};
+
+
+
+document.getElementById("play").onclick=play;
+
+
 
 async function play(){
 
@@ -280,6 +326,7 @@ return;
 
 }
 
+
 spin("dice1");
 let d1=await roll("dice1");
 
@@ -288,6 +335,7 @@ let d2=await roll("dice2");
 
 spin("dice3");
 let d3=await roll("dice3");
+
 
 let result=[d1,d2,d3];
 
@@ -304,23 +352,34 @@ win+=count*bets[n];
 money=money-total+win;
 
 update(ref(db,"players/"+currentUser.uid),{
+
 money:money
+
 });
+
 
 if(win>0){
 
 push(ref(db,"wins"),{
+
 email:currentUser.email,
 amount:win
+
 });
 
 }
 
 }
 
+
+
 function spin(id){
+
 document.getElementById(id).classList.add("spin");
+
 }
+
+
 
 function roll(id){
 
@@ -333,6 +392,7 @@ let r=Math.floor(Math.random()*6);
 let el=document.getElementById(id);
 
 el.classList.remove("spin");
+
 el.innerText=icons[r];
 
 resolve(r);
@@ -342,6 +402,8 @@ resolve(r);
 });
 
 }
+
+
 
 function loadHistory(){
 
@@ -363,12 +425,9 @@ document.getElementById("history").innerHTML=html;
 
 }
 
-window.logout=function(){
-signOut(auth);
-location.reload();
-}
 
-window.addMoney=async function(){
+
+document.getElementById("addMoney").onclick=async ()=>{
 
 let email=document.getElementById("targetEmail").value;
 let amount=parseInt(document.getElementById("moneyAmount").value);
@@ -380,16 +439,20 @@ players.forEach(p=>{
 if(p.val().email===email){
 
 update(ref(db,"players/"+p.key),{
+
 money:p.val().money+amount
-});
-
-}
 
 });
 
 }
 
-window.removeMoney=async function(){
+});
+
+};
+
+
+
+document.getElementById("removeMoney").onclick=async ()=>{
 
 let email=document.getElementById("targetEmail").value;
 let amount=parseInt(document.getElementById("moneyAmount").value);
@@ -401,14 +464,16 @@ players.forEach(p=>{
 if(p.val().email===email){
 
 update(ref(db,"players/"+p.key),{
+
 money:p.val().money-amount
-});
-
-}
 
 });
 
 }
+
+});
+
+};
 
 </script>
 
