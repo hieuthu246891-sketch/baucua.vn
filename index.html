@@ -8,20 +8,21 @@
 
 body{
 font-family:Arial;
-background:#121212;
+background:#111;
 color:white;
 text-align:center;
-}
-
-input{
-padding:5px;
-margin:5px;
 }
 
 button{
 padding:10px;
 margin:5px;
 cursor:pointer;
+}
+
+input{
+padding:5px;
+margin:5px;
+width:80px;
 }
 
 .grid{
@@ -48,7 +49,7 @@ animation:spin .5s linear infinite;
 }
 
 @keyframes spin{
-0%{transform:rotate(0deg)}
+0%{transform:rotate(0)}
 100%{transform:rotate(360deg)}
 }
 
@@ -65,10 +66,9 @@ padding:5px;
 </style>
 </head>
 
-
 <body>
 
-<h1>BẦU CUA FIREBASE</h1>
+<h1>BẦU CUA</h1>
 
 <div id="auth">
 
@@ -83,22 +83,23 @@ padding:5px;
 
 </div>
 
-
 <div id="game" style="display:none">
 
 <h3 id="uid"></h3>
 <h3 id="money"></h3>
 
+<button onclick="logout()">Logout</button>
+
 <div class="grid">
 
-<div class="bet">🦐 Tôm <br><input id="tom" type="number" value="0"></div>
-<div class="bet">🦀 Cua <br><input id="cua" type="number" value="0"></div>
+<div class="bet">🦐 Tôm<br><input id="tom" type="number" value="0"></div>
+<div class="bet">🦀 Cua<br><input id="cua" type="number" value="0"></div>
 
-<div class="bet">🐟 Cá <br><input id="ca" type="number" value="0"></div>
-<div class="bet">🐓 Gà <br><input id="ga" type="number" value="0"></div>
+<div class="bet">🐟 Cá<br><input id="ca" type="number" value="0"></div>
+<div class="bet">🐓 Gà<br><input id="ga" type="number" value="0"></div>
 
-<div class="bet">🦌 Nai <br><input id="nai" type="number" value="0"></div>
-<div class="bet">🥥 Bầu <br><input id="bau" type="number" value="0"></div>
+<div class="bet">🦌 Nai<br><input id="nai" type="number" value="0"></div>
+<div class="bet">🍐 Bầu<br><input id="bau" type="number" value="0"></div>
 
 </div>
 
@@ -121,7 +122,7 @@ padding:5px;
 <thead>
 <tr>
 <th>Email</th>
-<th>Tiền thắng</th>
+<th>Tiền</th>
 </tr>
 </thead>
 
@@ -131,19 +132,17 @@ padding:5px;
 
 </div>
 
-
 <div id="admin" style="display:none">
 
 <h2>ADMIN PANEL</h2>
 
 <input id="targetEmail" placeholder="email người chơi">
-
 <input id="moneyAmount" type="number" placeholder="số tiền">
 
 <br>
 
-<button onclick="addMoney()">Nạp tiền</button>
-<button onclick="removeMoney()">Rút tiền</button>
+<button onclick="addMoney()">Nạp</button>
+<button onclick="removeMoney()">Rút</button>
 
 </div>
 
@@ -156,7 +155,8 @@ import {
 getAuth,
 createUserWithEmailAndPassword,
 signInWithEmailAndPassword,
-onAuthStateChanged
+onAuthStateChanged,
+signOut
 }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -185,50 +185,40 @@ measurementId: "G-V7RM6KZXVW"
 
 };
 
-
 const app = initializeApp(firebaseConfig);
-
 const auth = getAuth();
-
 const db = getDatabase();
 
 let currentUser;
-
 let money=0;
 
 const adminEmail="admin@casino.com";
 
-
-
 document.getElementById("register").onclick=()=>{
 
-let email=emailInput();
-let pass=passInput();
+let email=document.getElementById("email").value;
+let pass=document.getElementById("pass").value;
 
 createUserWithEmailAndPassword(auth,email,pass)
-
 .then(user=>{
 
 set(ref(db,"players/"+user.user.uid),{
-
 email:email,
 money:1000
-
 });
 
 });
 
 };
-
-
 
 document.getElementById("login").onclick=()=>{
 
-signInWithEmailAndPassword(auth,emailInput(),passInput());
+signInWithEmailAndPassword(auth,
+document.getElementById("email").value,
+document.getElementById("pass").value
+);
 
 };
-
-
 
 onAuthStateChanged(auth,user=>{
 
@@ -241,29 +231,22 @@ document.getElementById("game").style.display="block";
 
 document.getElementById("uid").innerText="UID: "+user.uid;
 
-loadMoney();
-
-loadHistory();
-
 if(user.email===adminEmail){
-
 document.getElementById("admin").style.display="block";
-
 }
+
+loadMoney();
+loadHistory();
 
 }
 
 });
 
-
-
 function loadMoney(){
 
-const r=ref(db,"players/"+currentUser.uid);
+onValue(ref(db,"players/"+currentUser.uid),snap=>{
 
-onValue(r,s=>{
-
-money=s.val().money;
+money=snap.val().money;
 
 document.getElementById("money").innerText="Tiền: "+money;
 
@@ -271,28 +254,12 @@ document.getElementById("money").innerText="Tiền: "+money;
 
 }
 
-
-
-function emailInput(){
-return document.getElementById("email").value;
-}
-
-function passInput(){
-return document.getElementById("pass").value;
-}
-
-
-
-const icons=["🦐","🦀","🐟","🐓","🦌","🥥"];
-
+const icons=["🦐","🦀","🐟","🐓","🦌","🍐"];
 const names=["tom","cua","ca","ga","nai","bau"];
-
-
 
 async function play(){
 
 let bets={};
-
 let total=0;
 
 names.forEach(n=>{
@@ -305,7 +272,6 @@ total+=v;
 
 });
 
-
 if(total>money){
 
 alert("Không đủ tiền");
@@ -314,24 +280,18 @@ return;
 
 }
 
-
 spin("dice1");
-
 let d1=await roll("dice1");
 
 spin("dice2");
-
 let d2=await roll("dice2");
 
 spin("dice3");
-
 let d3=await roll("dice3");
-
 
 let result=[d1,d2,d3];
 
 let win=0;
-
 
 names.forEach((n,i)=>{
 
@@ -341,40 +301,26 @@ win+=count*bets[n];
 
 });
 
-
 money=money-total+win;
 
-
 update(ref(db,"players/"+currentUser.uid),{
-
 money:money
-
 });
-
 
 if(win>0){
 
 push(ref(db,"wins"),{
-
 email:currentUser.email,
 amount:win
-
 });
 
 }
 
-
 }
-
-
 
 function spin(id){
-
 document.getElementById(id).classList.add("spin");
-
 }
-
-
 
 function roll(id){
 
@@ -387,7 +333,6 @@ let r=Math.floor(Math.random()*6);
 let el=document.getElementById(id);
 
 el.classList.remove("spin");
-
 el.innerText=icons[r];
 
 resolve(r);
@@ -397,8 +342,6 @@ resolve(r);
 });
 
 }
-
-
 
 function loadHistory(){
 
@@ -420,14 +363,15 @@ document.getElementById("history").innerHTML=html;
 
 }
 
-
+window.logout=function(){
+signOut(auth);
+location.reload();
+}
 
 window.addMoney=async function(){
 
 let email=document.getElementById("targetEmail").value;
-
 let amount=parseInt(document.getElementById("moneyAmount").value);
-
 
 const players=await get(ref(db,"players"));
 
@@ -435,28 +379,20 @@ players.forEach(p=>{
 
 if(p.val().email===email){
 
-let uid=p.key;
-
-update(ref(db,"players/"+uid),{
-
+update(ref(db,"players/"+p.key),{
 money:p.val().money+amount
-
 });
 
 }
 
 });
 
-};
-
-
+}
 
 window.removeMoney=async function(){
 
 let email=document.getElementById("targetEmail").value;
-
 let amount=parseInt(document.getElementById("moneyAmount").value);
-
 
 const players=await get(ref(db,"players"));
 
@@ -464,20 +400,15 @@ players.forEach(p=>{
 
 if(p.val().email===email){
 
-let uid=p.key;
-
-update(ref(db,"players/"+uid),{
-
+update(ref(db,"players/"+p.key),{
 money:p.val().money-amount
-
 });
 
 }
 
 });
 
-};
-
+}
 
 </script>
 
