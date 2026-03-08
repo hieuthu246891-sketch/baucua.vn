@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bầu Cua Firebase</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#121212;
+color:white;
+text-align:center;
+}
+
+input{
+padding:5px;
+margin:5px;
+}
+
+button{
+padding:10px;
+margin:5px;
+cursor:pointer;
+}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+width:320px;
+margin:auto;
+}
+
+.bet{
+background:#333;
+padding:10px;
+border-radius:10px;
+}
+
+.dice{
+font-size:60px;
+margin:10px;
+}
+
+.spin{
+animation:spin .5s linear infinite;
+}
+
+@keyframes spin{
+0%{transform:rotate(0deg)}
+100%{transform:rotate(360deg)}
+}
+
+table{
+margin:auto;
+border-collapse:collapse;
+}
+
+td,th{
+border:1px solid white;
+padding:5px;
+}
+
+</style>
+</head>
+
+
+<body>
+
+<h1>BẦU CUA FIREBASE</h1>
+
+<div id="auth">
+
+<input id="email" placeholder="email">
+<br>
+
+<input id="pass" type="password" placeholder="password">
+<br>
+
+<button id="register">Register</button>
+<button id="login">Login</button>
+
+</div>
+
+
+<div id="game" style="display:none">
+
+<h3 id="uid"></h3>
+<h3 id="money"></h3>
+
+<div class="grid">
+
+<div class="bet">🦐 Tôm <br><input id="tom" type="number" value="0"></div>
+<div class="bet">🦀 Cua <br><input id="cua" type="number" value="0"></div>
+
+<div class="bet">🐟 Cá <br><input id="ca" type="number" value="0"></div>
+<div class="bet">🐓 Gà <br><input id="ga" type="number" value="0"></div>
+
+<div class="bet">🦌 Nai <br><input id="nai" type="number" value="0"></div>
+<div class="bet">🥥 Bầu <br><input id="bau" type="number" value="0"></div>
+
+</div>
+
+<br>
+
+<button onclick="play()">QUAY</button>
+
+<div>
+
+<span id="dice1" class="dice">🎲</span>
+<span id="dice2" class="dice">🎲</span>
+<span id="dice3" class="dice">🎲</span>
+
+</div>
+
+<h3>Lịch sử thắng</h3>
+
+<table>
+
+<thead>
+<tr>
+<th>Email</th>
+<th>Tiền thắng</th>
+</tr>
+</thead>
+
+<tbody id="history"></tbody>
+
+</table>
+
+</div>
+
+
+<div id="admin" style="display:none">
+
+<h2>ADMIN PANEL</h2>
+
+<input id="targetEmail" placeholder="email người chơi">
+
+<input id="moneyAmount" type="number" placeholder="số tiền">
+
+<br>
+
+<button onclick="addMoney()">Nạp tiền</button>
+<button onclick="removeMoney()">Rút tiền</button>
+
+</div>
+
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
+import {
+getAuth,
+createUserWithEmailAndPassword,
+signInWithEmailAndPassword,
+onAuthStateChanged
+}
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+import {
+getDatabase,
+ref,
+set,
+get,
+update,
+onValue,
+push
+}
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyA3jfkHd8_FN2M-FBGoIWIz8ZuIYwb-v0c",
+authDomain: "casino-slot-ec289.firebaseapp.com",
+databaseURL: "https://casino-slot-ec289-default-rtdb.asia-southeast1.firebasedatabase.app",
+projectId: "casino-slot-ec289",
+storageBucket: "casino-slot-ec289.firebasestorage.app",
+messagingSenderId: "191169506693",
+appId: "1:191169506693:web:18eae48ffff0922492e8ec",
+measurementId: "G-V7RM6KZXVW"
+
+};
+
+
+const app = initializeApp(firebaseConfig);
+
+const auth = getAuth();
+
+const db = getDatabase();
+
+let currentUser;
+
+let money=0;
+
+const adminEmail="admin@casino.com";
+
+
+
+document.getElementById("register").onclick=()=>{
+
+let email=emailInput();
+let pass=passInput();
+
+createUserWithEmailAndPassword(auth,email,pass)
+
+.then(user=>{
+
+set(ref(db,"players/"+user.user.uid),{
+
+email:email,
+money:1000
+
+});
+
+});
+
+};
+
+
+
+document.getElementById("login").onclick=()=>{
+
+signInWithEmailAndPassword(auth,emailInput(),passInput());
+
+};
+
+
+
+onAuthStateChanged(auth,user=>{
+
+if(user){
+
+currentUser=user;
+
+document.getElementById("auth").style.display="none";
+document.getElementById("game").style.display="block";
+
+document.getElementById("uid").innerText="UID: "+user.uid;
+
+loadMoney();
+
+loadHistory();
+
+if(user.email===adminEmail){
+
+document.getElementById("admin").style.display="block";
+
+}
+
+}
+
+});
+
+
+
+function loadMoney(){
+
+const r=ref(db,"players/"+currentUser.uid);
+
+onValue(r,s=>{
+
+money=s.val().money;
+
+document.getElementById("money").innerText="Tiền: "+money;
+
+});
+
+}
+
+
+
+function emailInput(){
+return document.getElementById("email").value;
+}
+
+function passInput(){
+return document.getElementById("pass").value;
+}
+
+
+
+const icons=["🦐","🦀","🐟","🐓","🦌","🥥"];
+
+const names=["tom","cua","ca","ga","nai","bau"];
+
+
+
+async function play(){
+
+let bets={};
+
+let total=0;
+
+names.forEach(n=>{
+
+let v=parseInt(document.getElementById(n).value)||0;
+
+bets[n]=v;
+
+total+=v;
+
+});
+
+
+if(total>money){
+
+alert("Không đủ tiền");
+
+return;
+
+}
+
+
+spin("dice1");
+
+let d1=await roll("dice1");
+
+spin("dice2");
+
+let d2=await roll("dice2");
+
+spin("dice3");
+
+let d3=await roll("dice3");
+
+
+let result=[d1,d2,d3];
+
+let win=0;
+
+
+names.forEach((n,i)=>{
+
+let count=result.filter(x=>x===i).length;
+
+win+=count*bets[n];
+
+});
+
+
+money=money-total+win;
+
+
+update(ref(db,"players/"+currentUser.uid),{
+
+money:money
+
+});
+
+
+if(win>0){
+
+push(ref(db,"wins"),{
+
+email:currentUser.email,
+amount:win
+
+});
+
+}
+
+
+}
+
+
+
+function spin(id){
+
+document.getElementById(id).classList.add("spin");
+
+}
+
+
+
+function roll(id){
+
+return new Promise(resolve=>{
+
+setTimeout(()=>{
+
+let r=Math.floor(Math.random()*6);
+
+let el=document.getElementById(id);
+
+el.classList.remove("spin");
+
+el.innerText=icons[r];
+
+resolve(r);
+
+},1000);
+
+});
+
+}
+
+
+
+function loadHistory(){
+
+onValue(ref(db,"wins"),snap=>{
+
+let html="";
+
+snap.forEach(d=>{
+
+let v=d.val();
+
+html+=`<tr><td>${v.email}</td><td>${v.amount}</td></tr>`;
+
+});
+
+document.getElementById("history").innerHTML=html;
+
+});
+
+}
+
+
+
+window.addMoney=async function(){
+
+let email=document.getElementById("targetEmail").value;
+
+let amount=parseInt(document.getElementById("moneyAmount").value);
+
+
+const players=await get(ref(db,"players"));
+
+players.forEach(p=>{
+
+if(p.val().email===email){
+
+let uid=p.key;
+
+update(ref(db,"players/"+uid),{
+
+money:p.val().money+amount
+
+});
+
+}
+
+});
+
+};
+
+
+
+window.removeMoney=async function(){
+
+let email=document.getElementById("targetEmail").value;
+
+let amount=parseInt(document.getElementById("moneyAmount").value);
+
+
+const players=await get(ref(db,"players"));
+
+players.forEach(p=>{
+
+if(p.val().email===email){
+
+let uid=p.key;
+
+update(ref(db,"players/"+uid),{
+
+money:p.val().money-amount
+
+});
+
+}
+
+});
+
+};
+
+
+</script>
+
+</body>
+</html>
